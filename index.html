@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#ff78ad">
+<title>アイカツ！カード管理</title>
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+:root{--pink:#ff78ad;--pink2:#fff0f6;--ink:#302a30;--line:#eadde3;--bg:#fff9fc}
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif;background:var(--bg);color:var(--ink)}
+header{position:sticky;top:0;z-index:5;background:rgba(255,249,252,.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);padding:12px}
+h1{font-size:20px;margin:0 0 10px}.top{max-width:1000px;margin:auto}.toolbar{display:grid;grid-template-columns:1fr auto;gap:8px}
+input,select,button{font:inherit;border:1px solid var(--line);border-radius:12px;background:white;padding:10px}
+button{cursor:pointer}.primary{background:var(--pink);color:white;border-color:var(--pink);font-weight:700}
+.tabs{display:flex;gap:6px;overflow:auto;padding-top:8px}.tabs button.active{background:var(--ink);color:white}
+.stats{max-width:1000px;margin:12px auto;padding:0 12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.progress{height:10px;background:#eee;border-radius:99px;overflow:hidden;flex:1;min-width:140px}.progress i{display:block;height:100%;background:var(--pink)}
+.grid{max-width:1000px;margin:auto;padding:0 12px 90px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.card{background:white;border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:0 2px 10px #7a42520d}
+.card img{width:100%;height:auto;max-height:340px;object-fit:contain;background:#f3edf0;display:block;margin:auto}
+.meta{padding:9px}.row{display:flex;justify-content:space-between;align-items:center;gap:6px}.num{font-weight:800}.rarity{font-size:12px;background:var(--pink2);padding:3px 7px;border-radius:99px}
+.flags{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:8px}.flag{padding:8px 2px;font-size:13px}.flag.on{background:var(--pink);color:white;border-color:var(--pink)}
+.qty{display:flex;align-items:center;justify-content:space-between;margin-top:8px}.qty button{padding:5px 11px}.qty b{min-width:24px;text-align:center}
+.empty{grid-column:1/-1;text-align:center;padding:50px;color:#888}
+dialog{border:0;border-radius:18px;max-width:520px;width:calc(100% - 28px);padding:20px}dialog::backdrop{background:#0006}
+.small{font-size:12px;color:#777;line-height:1.6}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+@media(min-width:700px){.grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+</style></head>
+<body>
+<header><div class="top">
+<h1>アイカツ！カード管理</h1>
+<div class="toolbar"><input id="q" placeholder="カード番号で検索"><button class="primary" id="update">↻ 更新</button></div>
+<div class="tabs" id="tabs">
+<button data-tab="all" class="active">すべて</button><button data-tab="owned">所持</button><button data-tab="missing">未所持</button><button data-tab="want">求</button><button data-tab="trade">譲</button>
+<select id="rarity"><option value="">全レアリティ</option><option>PR</option><option>R</option><option>N</option></select>
+</div></div></header>
+<div class="stats"><b id="count"></b><div class="progress"><i id="bar"></i></div><span id="pct"></span></div>
+<main class="grid" id="grid"></main>
+
+<dialog id="dlg"><h3>カードリスト更新</h3>
+<p class="small">公式カード画像のURLを確認して、現在の端末に新しいカード番号を追加します。所持・求・譲の記録はそのまま残ります。<br>※完全サーバーレスのため、カード名など公式ページ本文の自動取得は行わず、カード番号・レアリティ・公式画像を更新します。</p>
+<div id="updateStatus">準備中…</div>
+<div class="actions"><button id="closeDlg">閉じる</button></div></dialog>
+
+<script>
+const INITIAL=[{"id":"E1-01_PR","number":"E1-01","rarity":"PR","series":"1弾"},{"id":"E1-02_PR","number":"E1-02","rarity":"PR","series":"1弾"},{"id":"E1-03_PR","number":"E1-03","rarity":"PR","series":"1弾"},{"id":"E1-04_PR","number":"E1-04","rarity":"PR","series":"1弾"},{"id":"E1-05_R","number":"E1-05","rarity":"R","series":"1弾"},{"id":"E1-06_R","number":"E1-06","rarity":"R","series":"1弾"},{"id":"E1-07_R","number":"E1-07","rarity":"R","series":"1弾"},{"id":"E1-08_R","number":"E1-08","rarity":"R","series":"1弾"},{"id":"E1-09_R","number":"E1-09","rarity":"R","series":"1弾"},{"id":"E1-10_R","number":"E1-10","rarity":"R","series":"1弾"},{"id":"E1-11_R","number":"E1-11","rarity":"R","series":"1弾"},{"id":"E1-12_R","number":"E1-12","rarity":"R","series":"1弾"},{"id":"E1-13_R","number":"E1-13","rarity":"R","series":"1弾"},{"id":"E1-14_R","number":"E1-14","rarity":"R","series":"1弾"},{"id":"E1-15_R","number":"E1-15","rarity":"R","series":"1弾"},{"id":"E1-16_R","number":"E1-16","rarity":"R","series":"1弾"},{"id":"E1-17_R","number":"E1-17","rarity":"R","series":"1弾"},{"id":"E1-18_R","number":"E1-18","rarity":"R","series":"1弾"},{"id":"E1-19_R","number":"E1-19","rarity":"R","series":"1弾"},{"id":"E1-20_R","number":"E1-20","rarity":"R","series":"1弾"},{"id":"E1-21_N","number":"E1-21","rarity":"N","series":"1弾"},{"id":"E1-22_N","number":"E1-22","rarity":"N","series":"1弾"},{"id":"E1-23_N","number":"E1-23","rarity":"N","series":"1弾"},{"id":"E1-24_N","number":"E1-24","rarity":"N","series":"1弾"},{"id":"E1-25_N","number":"E1-25","rarity":"N","series":"1弾"},{"id":"E1-26_N","number":"E1-26","rarity":"N","series":"1弾"},{"id":"E1-27_N","number":"E1-27","rarity":"N","series":"1弾"},{"id":"E1-28_N","number":"E1-28","rarity":"N","series":"1弾"},{"id":"E1-29_N","number":"E1-29","rarity":"N","series":"1弾"},{"id":"E1-33_PR","number":"E1-33","rarity":"PR","series":"1弾"},{"id":"E1-34_PR","number":"E1-34","rarity":"PR","series":"1弾"},{"id":"E1-35_PR","number":"E1-35","rarity":"PR","series":"1弾"},{"id":"E1-36_PR","number":"E1-36","rarity":"PR","series":"1弾"},{"id":"E1-37_R","number":"E1-37","rarity":"R","series":"1弾"},{"id":"E1-38_R","number":"E1-38","rarity":"R","series":"1弾"},{"id":"E1-39_R","number":"E1-39","rarity":"R","series":"1弾"},{"id":"E1-40_R","number":"E1-40","rarity":"R","series":"1弾"},{"id":"E1-41_N","number":"E1-41","rarity":"N","series":"1弾"},{"id":"E1-42_N","number":"E1-42","rarity":"N","series":"1弾"},{"id":"E1-43_N","number":"E1-43","rarity":"N","series":"1弾"},{"id":"E1-44_N","number":"E1-44","rarity":"N","series":"1弾"},{"id":"E1-45_N","number":"E1-45","rarity":"N","series":"1弾"},{"id":"E1-46_N","number":"E1-46","rarity":"N","series":"1弾"},{"id":"E1-47_N","number":"E1-47","rarity":"N","series":"1弾"},{"id":"E1-48_N","number":"E1-48","rarity":"N","series":"1弾"},{"id":"E1-49_N","number":"E1-49","rarity":"N","series":"1弾"},{"id":"E1-51_PR","number":"E1-51","rarity":"PR","series":"1弾"},{"id":"E1-52_PR","number":"E1-52","rarity":"PR","series":"1弾"},{"id":"E1-53_R","number":"E1-53","rarity":"R","series":"1弾"},{"id":"E1-54_R","number":"E1-54","rarity":"R","series":"1弾"},{"id":"E1-55_R","number":"E1-55","rarity":"R","series":"1弾"},{"id":"E1-56_R","number":"E1-56","rarity":"R","series":"1弾"},{"id":"E1-57_R","number":"E1-57","rarity":"R","series":"1弾"},{"id":"E1-58_R","number":"E1-58","rarity":"R","series":"1弾"},{"id":"E1-59_R","number":"E1-59","rarity":"R","series":"1弾"},{"id":"E1-60_N","number":"E1-60","rarity":"N","series":"1弾"},{"id":"E1-61_N","number":"E1-61","rarity":"N","series":"1弾"},{"id":"E1-62_N","number":"E1-62","rarity":"N","series":"1弾"},{"id":"E1-63_N","number":"E1-63","rarity":"N","series":"1弾"},{"id":"E1-64_N","number":"E1-64","rarity":"N","series":"1弾"},{"id":"E1-65_N","number":"E1-65","rarity":"N","series":"1弾"},{"id":"E1-66_N","number":"E1-66","rarity":"N","series":"1弾"},{"id":"E1-67_N","number":"E1-67","rarity":"N","series":"1弾"},{"id":"E1-68_N","number":"E1-68","rarity":"N","series":"1弾"},{"id":"E1-69_N","number":"E1-69","rarity":"N","series":"1弾"},{"id":"E1-70_N","number":"E1-70","rarity":"N","series":"1弾"},{"id":"E1-71_PR","number":"E1-71","rarity":"PR","series":"1弾"},{"id":"E1-72_PR","number":"E1-72","rarity":"PR","series":"1弾"},{"id":"E1-73_PR","number":"E1-73","rarity":"PR","series":"1弾"},{"id":"E1-74_PR","number":"E1-74","rarity":"PR","series":"1弾"},{"id":"E1-75_PR","number":"E1-75","rarity":"PR","series":"1弾"},{"id":"E1-76_PR","number":"E1-76","rarity":"PR","series":"1弾"},{"id":"E1-77_PR","number":"E1-77","rarity":"PR","series":"1弾"},{"id":"E1-78_PR","number":"E1-78","rarity":"PR","series":"1弾"},{"id":"E1-79_PR","number":"E1-79","rarity":"PR","series":"1弾"},{"id":"E1-80_PR","number":"E1-80","rarity":"PR","series":"1弾"},{"id":"E1-81_N","number":"E1-81","rarity":"N","series":"1弾"},{"id":"E1-82_N","number":"E1-82","rarity":"N","series":"1弾"},{"id":"E1-83_N","number":"E1-83","rarity":"N","series":"1弾"},{"id":"E1-84_N","number":"E1-84","rarity":"N","series":"1弾"},{"id":"E1-85_N","number":"E1-85","rarity":"N","series":"1弾"}];
+const IMGBASE="https://dcd.aikatsu.com/encore/images/cardlist/card/";
+const KEY_CARDS="aikatsu_cards_v1", KEY_STATE="aikatsu_state_v1";
+let cards=JSON.parse(localStorage.getItem(KEY_CARDS)||"null")||INITIAL;
+let state=JSON.parse(localStorage.getItem(KEY_STATE)||"{}");
+let tab="all";
+const $=s=>document.querySelector(s);
+function save(){localStorage.setItem(KEY_CARDS,JSON.stringify(cards));localStorage.setItem(KEY_STATE,JSON.stringify(state))}
+function st(id){return state[id]||(state[id]={qty:0,want:false,trade:false})}
+function img(id){return IMGBASE+id+".webp"}
+function render(){
+ const q=$("#q").value.trim().toUpperCase(), rr=$("#rarity").value;
+ let a=cards.filter(c=>(!q||c.id.includes(q)||c.number.includes(q))&&(!rr||c.rarity===rr));
+ a=a.filter(c=>{let s=st(c.id);return tab==="all"||tab==="owned"&&s.qty>0||tab==="missing"&&s.qty===0||tab==="want"&&s.want||tab==="trade"&&s.trade});
+ const owned=cards.filter(c=>st(c.id).qty>0).length,p=cards.length?owned/cards.length*100:0;
+ $("#count").textContent=`所持 ${owned} / ${cards.length}`;$("#pct").textContent=p.toFixed(1)+"%";$("#bar").style.width=p+"%";
+ $("#grid").innerHTML=a.length?a.map(c=>{let s=st(c.id);return `<article class="card">
+ <img loading="lazy" src="${img(c.id)}" alt="${c.number}">
+ <div class="meta"><div class="row"><span class="num">${c.number}</span><span class="rarity">${c.rarity}</span></div>
+ <div class="flags"><button class="flag ${s.qty>0?'on':''}" data-act="owned" data-id="${c.id}">所持</button><button class="flag ${s.want?'on':''}" data-act="want" data-id="${c.id}">求</button><button class="flag ${s.trade?'on':''}" data-act="trade" data-id="${c.id}">譲</button></div>
+ <div class="qty"><span>枚数</span><span><button data-act="minus" data-id="${c.id}">−</button> <b>${s.qty}</b> <button data-act="plus" data-id="${c.id}">＋</button></span></div></div></article>`}).join(""):`<div class="empty">該当カードなし</div>`;
+}
+$("#grid").onclick=e=>{let b=e.target.closest("button[data-id]");if(!b)return;let s=st(b.dataset.id);
+ if(b.dataset.act==="owned")s.qty=s.qty?0:1;if(b.dataset.act==="want")s.want=!s.want;if(b.dataset.act==="trade")s.trade=!s.trade;
+ if(b.dataset.act==="plus")s.qty++;if(b.dataset.act==="minus")s.qty=Math.max(0,s.qty-1);save();render()};
+$("#tabs").onclick=e=>{let b=e.target.closest("button[data-tab]");if(!b)return;tab=b.dataset.tab;document.querySelectorAll("[data-tab]").forEach(x=>x.classList.toggle("active",x===b));render()};
+$("#q").oninput=render;$("#rarity").onchange=render;
+function exists(url){return new Promise(res=>{let i=new Image(),done=false,t=setTimeout(()=>{if(!done){done=true;res(false)}},5000);i.onload=()=>{if(!done){done=true;clearTimeout(t);res(true)}};i.onerror=()=>{if(!done){done=true;clearTimeout(t);res(false)}};i.src=url+"?v="+Date.now()})}
+async function scanSeries(series,max=150){let found=[], suffixes=["PR","R","N"];for(let start=1;start<=max;start+=10){let jobs=[];for(let n=start;n<Math.min(start+10,max+1);n++) for(let r of suffixes){let id=`${series}-${String(n).padStart(2,"0")}_${r}`;jobs.push(exists(img(id)).then(ok=>ok&&found.push({id,number:`${series}-${String(n).padStart(2,"0")}`,rarity:r,series:series==="E1"?"1弾":series})));}await Promise.all(jobs);$("#updateStatus").textContent=`${series}: ${Math.min(start+9,max)}番まで確認中…`;}return found;}
+$("#update").onclick=async()=>{$("#dlg").showModal();$("#updateStatus").textContent="公式カード画像を確認しています…";try{let found=await scanSeries("E1",150), map=new Map(cards.map(c=>[c.id,c]));found.forEach(c=>map.set(c.id,c));let before=cards.length;cards=[...map.values()].sort((a,b)=>a.number.localeCompare(b.number)||a.rarity.localeCompare(b.rarity));save();render();$("#updateStatus").textContent=`更新完了：${cards.length}枚（新規 ${cards.length-before}枚）`;}catch(e){$("#updateStatus").textContent="更新に失敗しました。通信状態を確認してもう一度試してください。"}};
+$("#closeDlg").onclick=()=>$("#dlg").close();save();render();if("serviceWorker" in navigator)navigator.serviceWorker.register("./sw.js").catch(()=>{});
+</script></body></html>
