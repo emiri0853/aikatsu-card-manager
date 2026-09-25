@@ -1,4 +1,13 @@
-const C='aikatsu-manager-v16';
-self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(C).then(c=>c.addAll(['./manifest.webmanifest','./ui-v15.css','./scanner.css','./ui-v15.js','./scanner.js']))) });
-self.addEventListener('activate',e=>e.waitUntil(Promise.all([self.clients.claim(),caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==C).map(k=>caches.delete(k))))])));
-self.addEventListener('fetch',e=>{const u=new URL(e.request.url);if(u.origin!==location.origin)return;if(e.request.mode==='navigate'||u.pathname.endsWith('/index.html')||u.pathname.endsWith('/aikatsu-card-manager/')){e.respondWith(fetch(e.request,{cache:'no-store'}).then(async r=>{let html=await r.text();const head='<link rel="stylesheet" href="./ui-v15.css?v=16"><link rel="stylesheet" href="./scanner.css?v=16">';const body='<script src="./ui-v15.js?v=16"></script><script src="./scanner.js?v=16"></script>';if(!html.includes('ui-v15.css'))html=html.replace('</head>',head+'</head>');if(!html.includes('scanner.js'))html=html.replace('</body>',body+'</body>');return new Response(html,{status:r.status,statusText:r.statusText,headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store'}})}).catch(()=>caches.match('./index.html')));return}e.respondWith(fetch(e.request).catch(()=>caches.match(e.request))) });
+// Legacy service worker cleanup.
+// The app now loads its UI directly from index.html instead of rewriting pages here.
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', event => {
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.map(key => caches.delete(key)));
+    await self.registration.unregister();
+    const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    clients.forEach(client => client.navigate(client.url));
+  })());
+});
+self.addEventListener('fetch', () => {});
