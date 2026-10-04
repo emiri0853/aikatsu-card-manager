@@ -1,4 +1,4 @@
-const C='aikatsu-manager-v15';
-self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(C).then(c=>c.addAll(['./manifest.webmanifest']))) });
-self.addEventListener('activate',e=>e.waitUntil(Promise.all([self.clients.claim(),caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==C).map(k=>caches.delete(k))))])));
-self.addEventListener('fetch',e=>{const u=new URL(e.request.url);if(u.origin!==location.origin)return;if(e.request.mode==='navigate'||u.pathname.endsWith('/index.html')||u.pathname.endsWith('/aikatsu-card-manager/')){e.respondWith(fetch(e.request).then(async r=>{let html=await r.text();const head='<link rel="stylesheet" href="./ui-v15.css?v=15"><link rel="stylesheet" href="./scanner.css?v=15">';const body='<script src="./ui-v15.js?v=15"></script><script src="./scanner.js?v=15"></script>';html=html.replace('</head>',head+'</head>').replace('</body>',body+'</body>');return new Response(html,{status:r.status,statusText:r.statusText,headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store'}})}).catch(()=>caches.match('./index.html')))}});
+const C='aikatsu-manager-v17';
+self.addEventListener('install',e=>{self.skipWaiting();});
+self.addEventListener('activate',e=>{e.waitUntil((async()=>{const keys=await caches.keys();await Promise.all(keys.map(k=>caches.delete(k)));await self.clients.claim();})());});
+self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(fetch(e.request,{cache:'no-store'}).catch(()=>fetch(e.request)));});
